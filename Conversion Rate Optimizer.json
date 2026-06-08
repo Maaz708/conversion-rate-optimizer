@@ -1,0 +1,642 @@
+{
+  "name": "Conversion Rate Optimizer",
+  "nodes": [
+    {
+      "parameters": {
+        "formTitle": "Conversion Rate Optimizer",
+        "formDescription": "Your landing page is leaking sales. Fix it now.",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Landing Page Url",
+              "placeholder": "https://www.example.com",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Main goal of the page",
+              "fieldType": "dropdown",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "Lead acquisition"
+                  },
+                  {
+                    "option": "Increase sales"
+                  },
+                  {
+                    "option": "Increase signups"
+                  }
+                ]
+              },
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Audience description",
+              "requiredField": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.3,
+      "position": [
+        -688,
+        592
+      ],
+      "id": "0d296489-4fa3-490f-b923-fa1dfe5901a5",
+      "name": "Landing Page Url",
+      "webhookId": "a08f2944-6215-4a3f-8897-c76c30bdf47b"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json['Landing Page Url'] }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        -480,
+        592
+      ],
+      "id": "c6e9a15d-2366-4428-b2e8-ff0c6b1221fb",
+      "name": "Scrape Website"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Loop through all items\nfor (const item of items) {\n  let html = item.json.data || '';\n  let cleanContent = '';\n\n  // Method 1: Try to extract everything inside the <main> tags\n  // This regex looks for <main (any attributes)> ... content ... </main>\n  // [\\s\\S]*? ensures we match across newlines\n  const mainMatch = html.match(/<main[^>]*>([\\s\\S]*?)<\\/main>/i);\n\n  if (mainMatch && mainMatch[1]) {\n    // If <main> is found, use that content directly (ignores header/footer automatically)\n    cleanContent = mainMatch[1];\n  } else {\n    // Method 2: Fallback - Manually remove Header and Footer if <main> isn't found\n    \n    // Remove <header>...</header>\n    html = html.replace(/<header[\\s\\S]*?<\\/header>/i, '');\n    \n    // Remove <nav>...</nav>\n    html = html.replace(/<nav[\\s\\S]*?<\\/nav>/i, '');\n    \n    // Remove <footer>...</footer>\n    html = html.replace(/<footer[\\s\\S]*?<\\/footer>/i, '');\n\n    cleanContent = html;\n  }\n\n  // Add the clean content to a new field\n  item.json.cleaned_html = cleanContent.trim();\n}\n\nreturn items;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -272,
+        592
+      ],
+      "id": "a6ca9f27-cc72-4c15-935b-373d7e3788bb",
+      "name": "Trim HTML Content"
+    },
+    {
+      "parameters": {
+        "html": "={{ $json.cleaned_html }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.markdown",
+      "typeVersion": 1,
+      "position": [
+        -64,
+        592
+      ],
+      "id": "531c4c93-2409-4a9a-bc4e-5e8d010a10d0",
+      "name": "Markdown"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "f7919eaa-c4aa-4569-8ed2-6e3f2b9789c6",
+              "name": "retry_count",
+              "value": 0,
+              "type": "number"
+            },
+            {
+              "id": "da622f6e-7b48-4497-af04-e6b9db22b521",
+              "name": "feedback_context",
+              "value": "",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        144,
+        592
+      ],
+      "id": "515c508b-7df3-4e9f-a2c5-09b98abe8fce",
+      "name": "Init Variables"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        352,
+        608
+      ],
+      "id": "cd9ea3fc-4c2d-415e-933b-ecec98125b92",
+      "name": "Loop Merge"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are a top-tier CRO Expert.\n\nGOAL:\nAnalyze the landing page content provided below and generate 10 detailed, non-trivial Conversion Rate Optimization ideas.\n\nCONTEXT:\n\nLanding page URL: {{ $('Landing Page Url').item.json['Landing Page Url'] }}\nMain goal of the page: {{ $('Landing Page Url').item.json['Main goal of the page'] }}\nAudience descrition: {{ $('Landing Page Url').item.json['Audience description'] }}\n\nWebsite Content: {{ $('Markdown').item.json.data }}\n\nFEEDBACK FROM PREVIOUS ATTEMPT:\n{{ $json.feedback_context ? $json.feedback_context : \"This is the first attempt. No feedback yet.\" }}\n\nINSTRUCTIONS:\n1. If there is feedback, you MUST revise your previous ideas to address the critique.\n2. Be specific and tactical.\n3. Do not be boring.\n\nOutput your roast and recommendations clearly.",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        560,
+        608
+      ],
+      "id": "d99035d6-9786-4e26-814f-9eac3c66d9e8",
+      "name": "Agent 1 - Idea Generator"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-5-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-5-mini"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        432,
+        816
+      ],
+      "id": "3affaee9-1c56-4dd9-9e00-f75479502471",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "ANq3s3oNU7jcpM7h",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are a Senior Optimization Strategist.\n\nTASK:\nReview the CRO ideas generated by the previous agent. \n\nINPUT IDEAS:\n{{ $json.output }}\n\nACTION:\nDefine 5 strict parameters/criteria to judge these ideas (e.g., Feasibility, Impact, Unconventionality, Clarity). \n\nOutput ONLY the list of parameters.",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        912,
+        608
+      ],
+      "id": "b073d098-dd8a-4ffa-b98d-751397b42188",
+      "name": "Agent 2 - Parameter Setter"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-5",
+          "mode": "list",
+          "cachedResultName": "gpt-5"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        784,
+        816
+      ],
+      "id": "53d40d85-9ce1-4b47-996c-dba7463c79f6",
+      "name": "OpenAI Chat Model1",
+      "credentials": {
+        "openAiApi": {
+          "id": "ANq3s3oNU7jcpM7h",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-5-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-5-mini"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        1136,
+        816
+      ],
+      "id": "57079f6f-4b9b-4da9-8119-c5c0f0ed6707",
+      "name": "OpenAI Chat Model2",
+      "credentials": {
+        "openAiApi": {
+          "id": "ANq3s3oNU7jcpM7h",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse the JSON string from the AI Judge into an object n8n can read\ntry {\n  const aiOutput = $input.item.json.output;\n  \n  // 1. Clean up if the AI added markdown code blocks\n  const cleanJson = aiOutput.replace(/```json/g, '').replace(/```/g, '').trim();\n  \n  // 2. Parse the JSON\n  const parsedOutput = JSON.parse(cleanJson);\n  \n  // 3. Calculate the Average Score\n  let finalScore = 0;\n  \n  if (parsedOutput.scores) {\n    const scoreValues = Object.values(parsedOutput.scores);\n    const count = scoreValues.length;\n    \n    // Sum all values\n    const sum = scoreValues.reduce((a, b) => a + Number(b), 0);\n    \n    // Calculate Average (prevent division by zero)\n    if (count > 0) {\n      // Calculate average and round to 1 decimal place (returns a string, so we wrap in Number)\n      finalScore = Number((sum / count).toFixed(1));\n    }\n  }\n  \n  // 4. Append the calculated average to the final object\n  parsedOutput.final_score = finalScore;\n  \n  return parsedOutput;\n\n} catch (error) {\n  return {\n    \"final_score\": 0,\n    \"error\": \"Failed to parse JSON or calculate average\",\n    \"raw_output\": $input.item.json.output\n  }\n}"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1616,
+        608
+      ],
+      "id": "3a120faf-8b95-4d14-a32c-0b10b4b278ce",
+      "name": "Parse Judge Output"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "b2c4e31b-b18f-40c0-8e34-5c717144f373",
+              "leftValue": "={{ $json.final_score }}",
+              "rightValue": 7,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1824,
+        608
+      ],
+      "id": "fc5ab3f7-602f-40af-9892-c4f50f5de2ab",
+      "name": "Is Score > 7?"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "47e186da-741d-483d-b8d9-789203453438",
+              "leftValue": "={{ $('Loop Merge').item.json.retry_count }}",
+              "rightValue": 3,
+              "operator": {
+                "type": "number",
+                "operation": "lt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2032,
+        704
+      ],
+      "id": "8bc3dbe0-cf04-4935-b71e-80ac16f4f58f",
+      "name": "Check Retries < 3"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "7855035e-0503-49c2-938a-148eb8f65dc8",
+              "name": "retry_count",
+              "value": "={{ $('Loop Merge').item.json.retry_count + 1 }}",
+              "type": "number"
+            },
+            {
+              "id": "e1b2f30e-4a7a-47ac-9ad8-93d5fe6585f4",
+              "name": "feedback_context",
+              "value": "={{ $json.critique }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2240,
+        608
+      ],
+      "id": "960f7064-eb1d-4357-aa33-b56570ac1c21",
+      "name": "Update Loop Params"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "f7a5aba4-baa8-4dfa-b0ac-0804ccc42c7d",
+              "name": "Landing Page Url",
+              "value": "={{ $('Landing Page Url').item.json['Landing Page Url'] }}",
+              "type": "string"
+            },
+            {
+              "id": "d58a27fa-5fc7-44ba-805a-0fb0bc9f34e0",
+              "name": "Main goal of the page",
+              "value": "={{ $('Landing Page Url').item.json['Main goal of the page'] }}",
+              "type": "string"
+            },
+            {
+              "id": "ae35d033-b92a-4466-8d8e-592d30b75336",
+              "name": "Audience description",
+              "value": "={{ $('Landing Page Url').item.json['Audience description'] }}",
+              "type": "string"
+            },
+            {
+              "id": "b1f06fed-80ca-4fa1-bece-02c78318ef64",
+              "name": "Ideas Generator",
+              "value": "={{ $('Agent 1 - Idea Generator').item.json.output }}",
+              "type": "string"
+            },
+            {
+              "id": "df5356e8-853b-401d-bbb9-a35553d79829",
+              "name": "Parameter",
+              "value": "={{ $('Agent 2 - Parameter Setter').item.json.output }}",
+              "type": "string"
+            },
+            {
+              "id": "923c389b-682e-4022-8bba-aed9a440b58e",
+              "name": "Judge",
+              "value": "={{ $('Agent 3 - The Judge').item.json.output }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2032,
+        512
+      ],
+      "id": "ba8e3064-fdea-4739-9a70-3dd3ce1ea80f",
+      "name": "Final Output"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are a Harsh Judge.\n\nTASK:\nEvaluate the \"Ideas\" based strictly on the \"Parameters\" provided below.\n\nIDEAS TO JUDGE:\n{{ $('Agent 1 - Idea Generator').item.json.output }}\n\nPARAMETERS:\n{{ $json.output }}\n\nOUTPUT FORMAT:\nYou must return Valid JSON ONLY. Do not include markdown formatting like ```json.\nDo not calculate a total score.\n\nYou must provide a score (1-10) for these 5 specific criteria:\n1. Clarity\n2. Feasibility\n3. Impact\n4. Innovation\n5. Adherence (to the input parameters)\n\nExample Structure:\n{\n  \"reasoning\": \"The idea is creative but completely ignores the budget constraints provided in the parameters...\",\n  \"scores\": {\n    \"Clarity\": 8,\n    \"Feasibility\": 3,\n    \"Impact\": 6,\n    \"Innovation\": 9,\n    \"Adherence\": 2\n  },\n  \"critique\": \"You need to strip back the expensive features. Keep the core hook but execute it using existing assets.\"\n}",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        1264,
+        608
+      ],
+      "id": "a251e53c-296c-4421-acff-79eb3e275685",
+      "name": "Agent 3 - The Judge"
+    }
+  ],
+  "pinData": {
+    "Landing Page Url": [
+      {
+        "json": {
+          "Landing Page Url": "https://datacamp.com",
+          "Main goal of the page": "Increase signups",
+          "Audience description": "People who want to upskill in data",
+          "submittedAt": "2026-02-06T06:16:14.915-05:00",
+          "formMode": "test"
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Landing Page Url": {
+      "main": [
+        [
+          {
+            "node": "Scrape Website",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scrape Website": {
+      "main": [
+        [
+          {
+            "node": "Trim HTML Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Trim HTML Content": {
+      "main": [
+        [
+          {
+            "node": "Markdown",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Markdown": {
+      "main": [
+        [
+          {
+            "node": "Init Variables",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Init Variables": {
+      "main": [
+        [
+          {
+            "node": "Loop Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Merge": {
+      "main": [
+        [
+          {
+            "node": "Agent 1 - Idea Generator",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Agent 1 - Idea Generator",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agent 1 - Idea Generator": {
+      "main": [
+        [
+          {
+            "node": "Agent 2 - Parameter Setter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Agent 2 - Parameter Setter",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agent 2 - Parameter Setter": {
+      "main": [
+        [
+          {
+            "node": "Agent 3 - The Judge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model2": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Agent 3 - The Judge",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Judge Output": {
+      "main": [
+        [
+          {
+            "node": "Is Score > 7?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Score > 7?": {
+      "main": [
+        [
+          {
+            "node": "Final Output",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Check Retries < 3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Retries < 3": {
+      "main": [
+        [
+          {
+            "node": "Update Loop Params",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Final Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Loop Params": {
+      "main": [
+        [
+          {
+            "node": "Loop Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Agent 3 - The Judge": {
+      "main": [
+        [
+          {
+            "node": "Parse Judge Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "d3b930f4-0e1e-4b33-b2c3-f8c64b3f8b5a",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "9dbe6e9adaa7644a782c9475adca697617306074a3b354c01045885272a5c8fe"
+  },
+  "id": "PZuQMlBhKObsBT2d",
+  "tags": []
+}
