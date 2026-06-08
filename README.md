@@ -79,7 +79,6 @@ Marketing Campaign Pages
 Lead Generation Funnels
 📷 Workflow Screenshot
 
-Add a screenshot of your n8n workflow here.
 <img width="1338" height="525" alt="Conversion Rate Optimizer Full" src="https://github.com/user-attachments/assets/dc7932b5-f1e2-4178-a7c4-f5515db5a256" />
 
 <img width="1391" height="497" alt="Conversion Rate Optimizer" src="https://github.com/user-attachments/assets/64767d47-9afb-45a6-a7e0-87041e41ecb3" />
